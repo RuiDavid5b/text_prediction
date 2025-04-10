@@ -45,10 +45,14 @@ class Trainer(object):
         # Initialize training environment and prepare datasets.
         self.spec.initialize()
         train_dataset, eval_dataset = self.spec.prepare_datasets()
+        
+        print(f"[DEBUG] Datasets prepared: train_dataset={type(train_dataset)}, eval_dataset={type(eval_dataset)}")
 
         # Construct a model and load its pretrained weights.
         model = self.spec.construct_model().cuda()
+        print(f"[DEBUG] Model constructed and moved to CUDA: {next(model.parameters()).device}")
         if from_pretrained:
+            print("[DEBUG] Loaded pretrained weights.")
             ckpt = torch.load(from_pretrained, map_location='cuda')
             model.load_state_dict(ckpt['model'])
 
@@ -60,6 +64,9 @@ class Trainer(object):
         # Create an optimizer and learning rate scheduler.
         optimizer, scheduler = self.spec.create_optimizer(model.parameters())
         recorder = Recorder()
+        
+        print(f"[DEBUG] Optimizer: {optimizer.__class__.__name__}, Scheduler: {scheduler.__class__.__name__}")
+
 
         if self.config.use_amp:
             model, optimizer = amp.initialize(
@@ -108,11 +115,15 @@ class Trainer(object):
         for step in training_iters:
             # Clear CUDA cache which is used for training.
             torch.cuda.empty_cache()
+            
+            print(f"[DEBUG] HERE 1")
 
             recorder.record(
                 self._train_step(rank, train_dataset, model, optimizer,
                                  scheduler),
                 scope='train')
+
+            print(f"[DEBUG] HERE 2")
 
             # Clear CUDA cache which is used for evaluation.
             torch.cuda.empty_cache()
@@ -165,12 +176,17 @@ class Trainer(object):
                     optimizer: optim.Optimizer,
                     scheduler: optim.lr_scheduler._LRScheduler
                     ) -> Dict[str, float]:
+        print(f"[DEBUG] HERE 3")
         model.train()
+        print(f"[DEBUG] HERE 4")
         optimizer.zero_grad()
+        print(f"[DEBUG] HERE 5")
 
         data = self._fetch_from(dataset, rank, self.config.batch_train)
+        print(f"[DEBUG] HERE 6")
         metrics = self.spec.train_objective(data, model)
         loss = metrics['loss']
+        
 
         if self.config.use_amp:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -204,7 +220,9 @@ class Trainer(object):
             data = dataset.fetch(batch)
             dataset.skip((self.config.gpus - rank - 1) * batch)
         else:
+            print(f"[DEBUG] HERE 7")
             data = dataset.fetch(self.config.batch_train)
+            print(f"[DEBUG] HERE 8")
 
         return {k: v.cuda() for k, v in data.items()}
 

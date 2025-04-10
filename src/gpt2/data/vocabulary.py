@@ -18,6 +18,11 @@ class Vocab(object):
 
             # The additional tokens would be inserted before the words.
             self.words = self.additional_tokens + fp.read().split()
+
+            # Check if the <unk> token exists, otherwise add it
+            if self.unk_token not in self.words:
+                self.words = [self.unk_token] + self.words
+
             self.vocab = {word: i for i, word in enumerate(self.words)}
 
     def __getitem__(self, idx_or_token: Union[int, str]) -> Union[str, int]:
@@ -30,8 +35,6 @@ class Vocab(object):
         return token in self.words
 
     def __len__(self) -> int:
-        # Note that vocabulary size must be a multiple of 8 although the actual
-        # number of words is less than it.
         return (len(self.words) + 7) // 8 * 8
 
     @property
