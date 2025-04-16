@@ -1,5 +1,5 @@
 import regex as re
-from gpt2.data import Vocab
+from gpt2_py.data import Vocab
 from typing import List
 
 _CHINESE_CHAR_RANGE = ('\u4e00-\u9fff\u3400-\u4dbf\U00020000-\U0002a6df'

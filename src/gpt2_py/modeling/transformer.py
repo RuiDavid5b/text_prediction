@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.utils.checkpoint
 from functools import partial
 from gpt2.utils.fusing import LayerNorm
-from gpt2.modeling import (PadMasking, FutureMasking, AttentionLayer, Past,
+from gpt2.modeling import (PadMasking, FutureMasking, Past,
                            PositionalEmbedding, TokenEmbedding,
                            PositionwiseFeedForward)
 from typing import Optional, Tuple, List, Union
@@ -27,7 +27,7 @@ class TransformerLayer(nn.Module):
                  rate: int,
                  dropout: float = 0.1):
         super().__init__()
-        self.attn = AttentionLayer(heads, dims, dropout)
+        self.attn = nn.MultiheadAttention(embed_dim=dims, num_heads=heads, dropout=dropout, batch_first=True)
         self.ff = PositionwiseFeedForward(dims, rate, dropout)
         self.ln_attn = LayerNorm(dims)
         self.ln_ff = LayerNorm(dims)
@@ -39,7 +39,9 @@ class TransformerLayer(nn.Module):
                 ) -> Union[torch.Tensor, Tuple[torch.Tensor, Past]]:
         # Layer normalizations are performed before the layers respectively.
         a = self.ln_attn(x)
-        a, past = self.attn(a, a, a, past, mask)
+
+        attn_output, _ = self.attn(a, a, a, attn_mask=mask)
+        x = x + attn_output
 
         x = x + a
         x = x + self.ff(self.ln_ff(x))
