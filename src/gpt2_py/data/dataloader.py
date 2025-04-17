@@ -14,13 +14,16 @@ model = GPT2LMHeadModel.from_pretrained("gpt2")
 model.resize_token_embeddings(len(tokenizer))
 
 class GPT2BookCorpusDataset(Dataset):
-    def __init__(self, tokenizer: GPT2TokenizerFast, config, dataset_path=None, max_seq_len=None):
+    def __init__(self, tokenizer: GPT2TokenizerFast, config):
         super().__init__()
         self.tokenizer = tokenizer
         self.config = config
         self.pad_token_id = tokenizer.pad_token_id
 
-        # Load dataset: from file or HuggingFace
+        # Pull dataset path and max_seq_len from config
+        dataset_path = config.get("dataset_path", None)
+        max_seq_len = config.get("max_seq_len", None)
+
         if dataset_path:
             with open(dataset_path, 'r', encoding='utf-8') as f:
                 self.sentences = [line.strip() for line in f if line.strip()]
