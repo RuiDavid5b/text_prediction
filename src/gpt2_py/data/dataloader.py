@@ -31,19 +31,21 @@ class GPT2BookCorpusDataset(Dataset):
             print(f"Loaded {len(self.sentences)} sentences from HuggingFace")
 
         if max_seq_len is None:
-            self.max_seq_len = self._get_max_sequence_length()
+            print("No max_seq_len provided, computing over entire dataset")
+            self.max_seq_len = self._get_max_sequence_length(full=True)
             print(f"Determined max sequence length: {self.max_seq_len}")
         else:
             self.max_seq_len = max_seq_len
+            print(f"Using provided max sequence length: {self.max_seq_len}")
 
     def __len__(self):
         return len(self.sentences) - 1
 
     def __getitem__(self, idx):
-        sent_a, sent_b, is_next = self._get_sentence_pair(idx)
+        sentence = self.sentences[idx]
 
         encoded = self.tokenizer(
-            f"{sent_a} {sent_b}",
+            sentence,
             truncation=True,
             max_length=self.max_seq_len,
             padding='max_length',
@@ -56,7 +58,8 @@ class GPT2BookCorpusDataset(Dataset):
         return {
             'input_ids': input_ids,
             'attention_mask': attention_mask,
-            'is_next': torch.tensor(is_next, dtype=torch.long),
+            'tokens': self.tokenizer.convert_ids_to_tokens(input_ids.tolist()),
+            'is_next': torch.tensor(-1)  # or remove this key if not used
         }
 
     def _get_sentence_pair(self, idx, next_prob=0.5):
@@ -72,11 +75,12 @@ class GPT2BookCorpusDataset(Dataset):
 
         return sent_a, sent_b, is_next
 
-    def _get_max_sequence_length(self):
+    def _get_max_sequence_length(self, full=False):
         max_len = 0
-        print("Computing max token length (sample of 10,000)...")
+        sample_size = len(self.sentences) - 1 if full else min(10000, len(self.sentences) - 1)
+        print(f"Computing max token length ({'full dataset' if full else 'sample of 10,000'})...")
 
-        for i in range(min(10000, len(self.sentences) - 1)):
+        for i in range(sample_size):
             sent_a, sent_b, _ = self._get_sentence_pair(i)
             tokens = self.tokenizer.encode(f"{sent_a} {sent_b}")
             max_len = max(max_len, len(tokens))
