@@ -15,7 +15,8 @@ from tqdm import tqdm, trange
 
 from gpt2_py.data.dataloader import GPT2BookCorpusDataset
 from gpt2_py.modeling.transformer import Transformer
-from src.gpt2_py.utils import AverageMeter # need to change this
+from gpt2_py.utils.utils import AverageMeter
+from transformers import GPT2TokenizerFast
 
 def accuracy(logits, labels):
     preds = logits.argmax(dim=-1)
@@ -43,9 +44,12 @@ def main(args: argparse.Namespace, config: dict) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
 
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+
     # Load data
-    train_dataset = TextDataset(split="train", **config["data"])
-    val_dataset = TextDataset(split="val", **config["data"])
+    train_dataset = GPT2BookCorpusDataset(tokenizer=tokenizer, config=config["data"])
+    val_dataset = GPT2BookCorpusDataset(tokenizer=tokenizer, config=config["data"])
 
     train_loader = DataLoader(train_dataset, batch_size=config["batch_size"],
                               num_workers=config["num_workers"], shuffle=True, pin_memory=True)
@@ -139,7 +143,7 @@ def main(args: argparse.Namespace, config: dict) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="config/config.json", required=True)
+    parser.add_argument("--config", type=str, default="gpt2_py/config/config.json", required=True)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
 
